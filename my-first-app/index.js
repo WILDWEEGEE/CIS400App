@@ -25,7 +25,7 @@ module.exports = app => {
       console.log(list);
       var comment = 'BUG REPORT:\n';
       list.forEach(function(file) {
-        var output = shell.exec('clang-check -analyze ' + file + ' --', {silent:true}).stderr;
+        var output = shell.exec('clang-check -analyze -extra-arg -Xclang -extra-arg -analyzer-output=text ' + file + ' --', {silent:true}).stderr;
         if (typeof output !== 'undefined') {
           comment += output;
         }
