@@ -46,8 +46,10 @@ module.exports = app => {
     app.log('pull request opened');
     app.log(context);
     console.log(context.payload);
-    const branch = context.payload.pull_request.head.ref;
-    const clone_url = context.payload.repository.clone_url;
+    const branch_from = context.payload.pull_request.head.ref;
+    const branch_target = context.payload.pull_request.base.ref;
+    const branch_from_clone_url = context.payload.pull_request.head.repo.clone_url;
+    const branch_target_clone_url = context.payload.pull_request.base.repo.clone_url;
     const pullRequestComment = context.issue({ body: 'Thanks for opening this pull request!' });
     return context.github.issues.createComment(pullRequestComment);
   });
