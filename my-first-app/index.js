@@ -7,8 +7,8 @@ const shell = require('shelljs');
 module.exports = app => {
 
     function runScanBuild(directory, clone_url, branch) {
-        shell.mkdir('from');
-        shell.cd('from');
+        shell.mkdir(directory);
+        shell.cd(directory);
         let comment = 'BUG REPORT:\n';
         if (shell.exec(`git clone ${clone_url}`).code) {
             shell.echo('Error: Git clone failed!');
@@ -28,7 +28,7 @@ module.exports = app => {
             }
         }
         shell.cd('..');
-        shell.rm('-rf', 'from');
+        shell.rm('-rf', directory);
     }
 
     app.on(['pull_request.opened','pull_request.reopened'], async context => {
