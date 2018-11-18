@@ -13,9 +13,7 @@ module.exports = app => {
         if (shell.exec(`git clone ${clone_url}`).code) {
             shell.echo('Error: Git clone failed!');
         } else {
-            let curr_branch = shell.exec('git status').stdout.split(" ")[2];
-            console.log(curr_branch);
-            if (shell.exec(`git checkout -q -f ${branch}`).code) {
+            if (shell.exec(`git pull origin ${branch}`).code) {
                 shell.echo('Error: Git checkout failed!');                
             } else {
                 const list = shell.find('.').filter((file) =>  file.match(/\.c$/));
