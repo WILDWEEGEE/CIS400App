@@ -38,6 +38,10 @@ module.exports = app => {
     return context.github.issues.createComment(issueComment);
   });
 
+  app.on('issues.opened', async context => {
+    console.log("hi");
+  });
+
   // app.on('pull_request.opened', async context => {
   //   app.log('pull request opened');
   //   app.log(context);
