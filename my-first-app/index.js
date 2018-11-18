@@ -36,11 +36,10 @@ module.exports = app => {
         const branch_target = context.payload.pull_request.base.ref;
         const branch_from_clone_url = context.payload.pull_request.head.repo.clone_url;
         const branch_target_clone_url = context.payload.pull_request.base.repo.clone_url;
-        const from_comment = runScanBuild('from', branch_from_clone_url, branch_from);
-        const target_comment = runScanBuild('target', branch_target_clone_url, branch_target);
-        const issueComment = context.issue({ body: comment });
-        await context.github.issues.createComment(issueComment);
-        return context.github.issues.createComment(issueComment);
+        const prepared_from_comment = context.issue({ body: runScanBuild('from', branch_from_clone_url, branch_from) });
+        const prepared_target_comment = context.issue({ body: runScanBuild('target', branch_target_clone_url, branch_target) });
+        await context.github.issues.createComment(prepared_from_comment);
+        return context.github.issues.createComment(prepared_target_comment);
     });
 
     app.on('issues.opened', async context => {
