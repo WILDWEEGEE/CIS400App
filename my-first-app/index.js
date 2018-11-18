@@ -13,13 +13,13 @@ module.exports = app => {
     const branch_target_clone_url = context.payload.pull_request.base.repo.clone_url;
     shell.mkdir('from');
     shell.cd('from');
+    let comment = 'BUG REPORT:\n';
     if (shell.exec(`git clone ${branch_from_clone_url}`).code) {
       shell.echo('Error: Git clone failed!');
     } else {
       if (shell.exec(`git checkout -f ${branch_from}`).code) {
         const list = shell.find('.').filter((file) =>  file.match(/\.c$/));
         console.log(list);
-        let comment = 'BUG REPORT:\n';
         list.forEach(function(file) {
           const output = shell.exec('clang-check -analyze -extra-arg -Xclang -extra-arg -analyzer-output=text ' + file + ' --', {silent:true}).stderr;
           if (typeof output !== 'undefined') {
