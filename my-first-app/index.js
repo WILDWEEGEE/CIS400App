@@ -6,7 +6,7 @@ const shell = require('shelljs');
  */
 module.exports = app => {
 
-  app.on('pull_request.opened', async context => {
+  app.on(['pull_request.opened','pull_request.reopened'], async context => {
     const branch_from = context.payload.pull_request.head.ref;
     const branch_target = context.payload.pull_request.base.ref;
     const branch_from_clone_url = context.payload.pull_request.head.repo.clone_url;
