@@ -29,6 +29,7 @@ module.exports = app => {
         }
         shell.cd('..');
         shell.rm('-rf', directory);
+        return comment;
     }
 
     app.on(['pull_request.opened','pull_request.reopened'], async context => {
