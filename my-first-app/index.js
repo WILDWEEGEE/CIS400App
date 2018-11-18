@@ -38,17 +38,17 @@ module.exports = app => {
     return context.github.issues.createComment(issueComment);
   });
 
-  app.on('pull_request.opened', async context => {
-    app.log('pull request opened');
-    app.log(context);
-    console.log(context.payload);
-    const branch_from = context.payload.pull_request.head.ref;
-    const branch_target = context.payload.pull_request.base.ref;
-    const branch_from_clone_url = context.payload.pull_request.head.repo.clone_url;
-    const branch_target_clone_url = context.payload.pull_request.base.repo.clone_url;
-    const pullRequestComment = context.issue({ body: 'Thanks for opening this pull request!' });
-    return context.github.issues.createComment(pullRequestComment);
-  });
+  // app.on('pull_request.opened', async context => {
+  //   app.log('pull request opened');
+  //   app.log(context);
+  //   console.log(context.payload);
+  //   const branch_from = context.payload.pull_request.head.ref;
+  //   const branch_target = context.payload.pull_request.base.ref;
+  //   const branch_from_clone_url = context.payload.pull_request.head.repo.clone_url;
+  //   const branch_target_clone_url = context.payload.pull_request.base.repo.clone_url;
+  //   const pullRequestComment = context.issue({ body: 'Thanks for opening this pull request!' });
+  //   return context.github.issues.createComment(pullRequestComment);
+  // });
 
   // For more information on building apps:
   // https://probot.github.io/docs/
