@@ -10,22 +10,18 @@ module.exports = app => {
         shell.mkdir(directory);
         shell.cd(directory);
         let comment = 'BUG REPORT:\n';
-        if (shell.exec(`git clone ${clone_url}`).code) {
+        if (shell.exec(`git clone -b ${branch} ${clone_url}`).code) {
             shell.echo('Error: Git clone failed!');
         } else {
-            if (shell.exec(`git pull origin ${branch}`).code) {
-                shell.echo('Error: Git checkout failed!');                
-            } else {
-                const list = shell.find('.').filter((file) =>  file.match(/\.c$/));
-                console.log(list);
-                list.forEach(function(file) {
-                    const output = shell.exec('clang-check -analyze -extra-arg -Xclang -extra-arg -analyzer-output=text ' + file + ' --', {silent:true}).stderr;
-                    if (typeof output !== 'undefined') {
-                        comment += output;
-                    }
-                    console.log(output);
-                });
-            }
+            const list = shell.find('.').filter((file) =>  file.match(/\.c$/));
+            console.log(list);
+            list.forEach(function(file) {
+                const output = shell.exec('clang-check -analyze -extra-arg -Xclang -extra-arg -analyzer-output=text ' + file + ' --', {silent:true}).stderr;
+                if (typeof output !== 'undefined') {
+                    comment += output;
+                }
+                console.log(output);
+            });
         }
         shell.cd('..');
         shell.rm('-rf', directory);
