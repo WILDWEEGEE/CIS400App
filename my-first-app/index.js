@@ -5,38 +5,34 @@ const shell = require('shelljs');
  * @param {import('probot').Application} app - Probot's Application class.
  */
 module.exports = app => {
-  // Your code here
-  app.log('Yay, the app was loaded!');
 
-  console.log('oh boi');
-
-  app.on('issues.opened', async context => {
-    app.log('issue opened');
-    var repo_url = context.payload.repository.html_url;
-    var repo_name = context.payload.repository.name;
-    shell.mkdir('temp');
-    shell.cd('temp');
-    if (shell.exec('git clone ' + repo_url).code !== 0) {
+  app.on('pull_request.opened', async context => {
+    const branch_from = context.payload.pull_request.head.ref;
+    const branch_target = context.payload.pull_request.base.ref;
+    const branch_from_clone_url = context.payload.pull_request.head.repo.clone_url;
+    const branch_target_clone_url = context.payload.pull_request.base.repo.clone_url;
+    shell.mkdir('from');
+    shell.cd('from');
+    if (shell.exec(`git clone ${branch_from_clone_url}`).code) {
       shell.echo('Error: Git clone failed!');
     } else {
-      shell.echo('Woa dude it worked');
-      // TODO: change regex to include .h, .cpp, etc.
-      var list = shell.find('.').filter(function(file) { return file.match(/\.c$/); });
-      console.log(list);
-      var comment = 'BUG REPORT:\n';
-      list.forEach(function(file) {
-        var output = shell.exec('clang-check -analyze -extra-arg -Xclang -extra-arg -analyzer-output=text ' + file + ' --', {silent:true}).stderr;
-        if (typeof output !== 'undefined') {
-          comment += output;
-        }
-        console.log(output);
-        // console.log(shell.exec('clang-check -analyze ' + file + ' --').output);
-      });
+      if (shell.exec(`git checkout -f ${branch_from}`).code) {
+        const list = shell.find('.').filter((file) =>  file.match(/\.c$/));
+        console.log(list);
+        let comment = 'BUG REPORT:\n';
+        list.forEach(function(file) {
+          const output = shell.exec('clang-check -analyze -extra-arg -Xclang -extra-arg -analyzer-output=text ' + file + ' --', {silent:true}).stderr;
+          if (typeof output !== 'undefined') {
+            comment += output;
+          }
+          console.log(output);
+        });
+      } else {
+        shell.echo('Error: Git checkout failed!');
+      }
     }
     shell.cd('..');
-    shell.rm('-rf', 'temp');
-    // var list = shell.find('.').filter(function(file) { return file.match(/\.txt$/); });
-    // console.log(repo_url);
+    shell.rm('-rf', 'from');
     console.log(comment);
     const issueComment = context.issue({ body: comment });
     return context.github.issues.createComment(issueComment);
