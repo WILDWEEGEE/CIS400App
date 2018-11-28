@@ -11,13 +11,13 @@ class ScanBuildResultsParser:
         for filename in os.listdir(directory_of_results):
             # do not need index.html
             if filename.endswith(".html") and filename != "index.html":
-                self.html_report_file_list.append(filename)
+                self.html_report_file_list.append(directory_of_results + filename)
 
         # list of tuples in form (report_filename, report object)
         self.report_list = []
         for report in self.html_report_file_list:
             sbrepp_obj = sbrepp.ScanBuildReportParser(report)
-            self.report_list.append(report, sbrepp_obj)
+            self.report_list.append((report, sbrepp_obj))
 
     # returns the relative complement for this i.e. the report filenames
     # that are present in this ScanBuildResultsParser but not the other

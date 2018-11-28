@@ -46,8 +46,8 @@ class ScanBuildReportParser:
             rule_order_number = rule[0]
             rule = rule[1:]
             # remove the left arrow
-            rule = rule.split('←')[-1]
-            rule = rule.split('→')[0]
+            rule = rule.split(u'←')[-1]
+            rule = rule.split(u'→')[0]
             cleaned_rules_list.append((rule_order_number, rule))
             # remove the right arrow
         return cleaned_rules_list
