@@ -4,7 +4,7 @@ import os
 import ScanBuildResultsParser as sbresp
 import shutil
 
-if len(sys.argv != 4):
+if len(sys.argv) != 4:
     sys.exit("Pass in three directories where the first two directories " +
              "contain scan build results and the second directory needs " +
              "duplicate reports removed. The third directory will be " +
