@@ -1,4 +1,5 @@
 const shell = require('shelljs');
+const home_dir = shell.pwd().stdout;
 
 /**
  * This is the entry point for your Probot App.
@@ -6,29 +7,31 @@ const shell = require('shelljs');
  */
 module.exports = app => {
 
-    function runScanBuild(directory, clone_url, branch) {
+    function runScanBuild(home_dir, directory, clone_url, branch) {
+        shell.cd(home_dir);
         shell.mkdir(directory);
         shell.cd(directory);
-        let comment = 'BUG REPORT:\n';
         if (shell.exec(`git clone -b ${branch} ${clone_url}`).code) {
-            shell.echo('Error: Git clone failed!');
+            let errorMsg = `Error: Git clone for ${directory} directory failed!`;
+            console.log(errorMsg);
+            return errorMsg;
         } else {
-            // TODO
-            // shell.cd('*');
-            if (shell.exec())
-            const list = shell.find('.').filter((file) =>  file.match(/\.c$/));
-            console.log(list);
-            list.forEach(function(file) {
-                const output = shell.exec('clang-check -analyze -extra-arg -Xclang -extra-arg -analyzer-output=text ' + file + ' --', {silent:true}).stderr;
+            // TODO: search for Makefile in root directory
+            shell.cd('*');
+            let comment = `${directory} directory BUG REPORT:\n`;
+            const scanBuildCmd = shell.exec('scan-build -o ../analysis make', {silent:true});
+            if (scanBuildCmd.code) {
+                comment = `Error: scan-build for ${directory} directory failed!`;
+                console.log(comment);
+            } else {
+                const output = scanBuildCmd.stderr
                 if (typeof output !== 'undefined') {
                     comment += output;
                 }
                 console.log(output);
-            });
+            }
+            return comment;
         }
-        shell.cd('..');
-        shell.rm('-rf', directory);
-        return comment;
     }
 
     function runClangCheck(directory, clone_url, branch) {
@@ -49,23 +52,47 @@ module.exports = app => {
             });
         }
         shell.cd('..');
-        shell.rm('-rf', directory);
+        // shell.rm('-rf', directory);
         return comment;
     }
 
+    function runParser(home_dir, from_dir, target_dir) {
+
+    }
+
+    function cleanup(home_dir, from_dir, target_dir) {
+        shell.cd(home_dir);
+        shell.rm('-rf', from_dir);
+        shell.rm('-rf', target_dir);
+    }
+
     app.on(['pull_request.opened','pull_request.reopened'], async context => {
+        const from_dir = 'from';
+        const target_dir = 'target';
+
         const branch_from = context.payload.pull_request.head.ref;
         const branch_target = context.payload.pull_request.base.ref;
         const branch_from_clone_url = context.payload.pull_request.head.repo.clone_url;
         const branch_target_clone_url = context.payload.pull_request.base.repo.clone_url;
-        const prepared_from_comment = context.issue({ body: runScanBuild('from', branch_from_clone_url, branch_from) });
-        const prepared_target_comment = context.issue({ body: runScanBuild('target', branch_target_clone_url, branch_target) });
+
+        const from_output = runScanBuild(home_dir, from_dir, branch_from_clone_url, branch_from);
+        const target_output = runScanBuild(home_dir, target_dir, branch_target_clone_url, branch_target)
+        cleanup(home_dir, from_dir, target_dir);
+
+        // TODO
+        const prepared_from_comment = context.issue({ body: from_output });
+        const prepared_target_comment = context.issue({ body: target_output });
+        // const prepared_from_comment = context.issue({ body: runScanBuild('from', branch_from_clone_url, branch_from) });
+        // const prepared_target_comment = context.issue({ body: runScanBuild('target', branch_target_clone_url, branch_target) });
         await context.github.issues.createComment(prepared_from_comment);
         return context.github.issues.createComment(prepared_target_comment);
     });
 
     app.on('issues.opened', async context => {
         console.log("hi");
+        console.log(home_dir);
+        const issueComment = context.issue({ body: 'Thanks for opening this issue!' });
+        return context.github.issues.createComment(issueComment);
     });
 
     // app.on('pull_request.opened', async context => {
