@@ -75,15 +75,18 @@ module.exports = app => {
         const branch_from_clone_url = context.payload.pull_request.head.repo.clone_url;
         const branch_target_clone_url = context.payload.pull_request.base.repo.clone_url;
 
+        console.log('starting from');
         const from_output = runScanBuild(home_dir, from_dir, branch_from_clone_url, branch_from);
+        console.log('starting target')
         const target_output = runScanBuild(home_dir, target_dir, branch_target_clone_url, branch_target)
+        console.log('starting cleanup')
         cleanup(home_dir, from_dir, target_dir);
 
         // TODO
         const prepared_from_comment = context.issue({ body: from_output });
         const prepared_target_comment = context.issue({ body: target_output });
-        // const prepared_from_comment = context.issue({ body: runScanBuild('from', branch_from_clone_url, branch_from) });
-        // const prepared_target_comment = context.issue({ body: runScanBuild('target', branch_target_clone_url, branch_target) });
+        // const prepared_from_comment = context.issue({ body: runClangCheck('from', branch_from_clone_url, branch_from) });
+        // const prepared_target_comment = context.issue({ body: runClangCheck('target', branch_target_clone_url, branch_target) });
         await context.github.issues.createComment(prepared_from_comment);
         return context.github.issues.createComment(prepared_target_comment);
     });
