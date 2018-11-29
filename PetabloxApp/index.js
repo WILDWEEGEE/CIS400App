@@ -60,7 +60,7 @@ module.exports = app => {
         shell.cd(home_dir);
         const from_analysis = `${from_dir}/analysis/*`;
         const target_analysis = `${target_dir}/analysis/*`;
-        if (shell.exec(`python ${parser} ${from_analysis} ${target_analysis} ${diff_dir}`).code) {
+        if (shell.exec(`python ${parser} ${target_analysis} ${from_analysis} ${diff_dir}`).code) {
             console.log('Error: Parser failed!');
         } else {
             console.log('Parser succeeded!');
@@ -90,8 +90,8 @@ module.exports = app => {
         const target_output = runScanBuild(home_dir, target_dir, branch_target_clone_url, branch_target);
         console.log('running parser');
         runParser(home_dir, parser, from_dir, target_dir, diff_dir);
-        console.log('starting cleanup');
-        cleanup(home_dir, from_dir, target_dir);
+        // console.log('starting cleanup');
+        // cleanup(home_dir, from_dir, target_dir);
 
         // TODO
         const prepared_from_comment = context.issue({ body: from_output });
