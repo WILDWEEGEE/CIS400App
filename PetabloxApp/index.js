@@ -67,10 +67,28 @@ module.exports = app => {
         }
     }
 
+    function createComments(context, home_dir, diff_dir) {
+        shell.cd(home_dir);
+        let comments = []
+        const htmlParser = 'parser/ReportHTMLParser.py';
+        shell.ls(`${diff_dir}/*.html`).forEach(function (file) {
+            htmlParserCmd = shell.exec(`python ${htmlParser} ${file}`, {silent:true});
+            if (htmlParserCmd.code) {
+                console.log(`Error: Could not parse html for ${file}`);
+            } else {
+                parsedHtml = htmlParserCmd.stdout;
+                const comment = context.issue({ body: parsedHtml });
+                comments.push(comment);
+            }
+        });
+        return comments;
+    }
+
     function cleanup(home_dir, from_dir, target_dir, diff_dir) {
         shell.cd(home_dir);
         shell.rm('-rf', from_dir);
         shell.rm('-rf', target_dir);
+        shell.rm('-rf', diff_dir);
     }
 
     app.on(['pull_request.opened','pull_request.reopened'], async context => {
@@ -90,16 +108,21 @@ module.exports = app => {
         const target_output = runScanBuild(home_dir, target_dir, branch_target_clone_url, branch_target);
         console.log('running parser');
         runParser(home_dir, parser, from_dir, target_dir, diff_dir);
-        // console.log('starting cleanup');
-        // cleanup(home_dir, from_dir, target_dir);
+        console.log('creating comments');
+        const comments = createComments(context, home_dir, diff_dir);
+        comments.forEach(function (comment) {
+            context.github.issues.createComment(comment);
+        });
+        console.log('starting cleanup');
+        cleanup(home_dir, from_dir, target_dir, diff_dir);
 
         // TODO
-        const prepared_from_comment = context.issue({ body: from_output });
-        const prepared_target_comment = context.issue({ body: target_output });
+        // const prepared_from_comment = context.issue({ body: from_output });
+        // const prepared_target_comment = context.issue({ body: target_output });
         // const prepared_from_comment = context.issue({ body: runClangCheck('from', branch_from_clone_url, branch_from) });
         // const prepared_target_comment = context.issue({ body: runClangCheck('target', branch_target_clone_url, branch_target) });
-        await context.github.issues.createComment(prepared_from_comment);
-        return context.github.issues.createComment(prepared_target_comment);
+        // await context.github.issues.createComment(prepared_from_comment);
+        // return context.github.issues.createComment(prepared_target_comment);
     });
 
     app.on('issues.opened', async context => {
