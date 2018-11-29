@@ -56,11 +56,18 @@ module.exports = app => {
         return comment;
     }
 
-    function runParser(home_dir, from_dir, target_dir) {
-
+    function runParser(home_dir, parser, from_dir, target_dir, diff_dir) {
+        shell.cd(home_dir);
+        const from_analysis = `${from_dir}/analysis/*`;
+        const target_analysis = `${target_dir}/analysis/*`;
+        if (shell.exec(`python ${parser} ${from_analysis} ${target_analysis} ${diff_dir}`).code) {
+            console.log('Error: Parser failed!');
+        } else {
+            console.log('Parser succeeded!');
+        }
     }
 
-    function cleanup(home_dir, from_dir, target_dir) {
+    function cleanup(home_dir, from_dir, target_dir, diff_dir) {
         shell.cd(home_dir);
         shell.rm('-rf', from_dir);
         shell.rm('-rf', target_dir);
@@ -69,6 +76,8 @@ module.exports = app => {
     app.on(['pull_request.opened','pull_request.reopened'], async context => {
         const from_dir = 'from';
         const target_dir = 'target';
+        const diff_dir = 'diff';
+        const parser = 'parser/ScanBuildDifferencer.py';
 
         const branch_from = context.payload.pull_request.head.ref;
         const branch_target = context.payload.pull_request.base.ref;
@@ -77,9 +86,11 @@ module.exports = app => {
 
         console.log('starting from');
         const from_output = runScanBuild(home_dir, from_dir, branch_from_clone_url, branch_from);
-        console.log('starting target')
-        const target_output = runScanBuild(home_dir, target_dir, branch_target_clone_url, branch_target)
-        console.log('starting cleanup')
+        console.log('starting target');
+        const target_output = runScanBuild(home_dir, target_dir, branch_target_clone_url, branch_target);
+        console.log('running parser');
+        runParser(home_dir, parser, from_dir, target_dir, diff_dir);
+        console.log('starting cleanup');
         cleanup(home_dir, from_dir, target_dir);
 
         // TODO
