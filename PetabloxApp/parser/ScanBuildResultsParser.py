@@ -11,7 +11,7 @@ class ScanBuildResultsParser:
         for filename in os.listdir(directory_of_results):
             # do not need index.html
             if filename.endswith(".html") and filename != "index.html":
-                self.html_report_file_list.append(directory_of_results + filename)
+                self.html_report_file_list.append(directory_of_results + '/' + filename)
 
         # list of tuples in form (report_filename, report object)
         self.report_list = []
@@ -23,7 +23,8 @@ class ScanBuildResultsParser:
     # that are present in this ScanBuildResultsParser but not the other
     def get_complement(self, other):
         output_list = []
+        other_sbrepp_obj_list = [report[1] for report in other.report_list]
         for report, sbrepp_obj in self.report_list:
-            if sbrepp_obj not in other.report_list:
+            if sbrepp_obj not in other_sbrepp_obj_list:
                 output_list.append(report)
         return output_list

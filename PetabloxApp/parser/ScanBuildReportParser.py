@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 from bs4 import BeautifulSoup
 import codecs
 
@@ -26,28 +25,32 @@ class ScanBuildReportParser:
     def get_error_and_line_num(self):
         # this assumes that the first hyperlink in the HTML corresponds to the error
         line_num_tag = self.document.find(href=True)
-        # parse out the column
-        # this gets the error itself as a string because the error is in the
-        # contents of the previous element from the line number tag
-        error_msg = line_num_tag.previous.contents[-1]
+        # parse out the column (the text is in the form "line x, column y"
         line_num = line_num_tag.text.split(",")[0].split()[-1]
+        # this one is a doozy, but at index 2 of the line tag's next_elements is a line
+        # holding the desciption and warning message. The next element of that is just
+        # the warning message.
+        next_elem_gen = line_num_tag.next_elements
+        desc_elem = None
+        for i in range(0, 3):
+            desc_elem = next(next_elem_gen)
+        error_msg = desc_elem.next_element.nextSibling.text
         return line_num, str(error_msg)
 
     # returns a tuple of the form (rule_order_number, rule_text) with cleaned text
+    # note that the error itself is inside this rule trace
     def get_rule_trace(self):
         # msgT is the table that holds the rules
         rules_tag_list = self.document.find_all(class_="msgT")
         uncleaned_rules_list = [rule.text for rule in rules_tag_list]
         cleaned_rules_list = []
-        # last rule is always the warning/issue itself so remove it
-        uncleaned_rules_list = uncleaned_rules_list[:-1]
         for rule in uncleaned_rules_list:
             # the number of the rule is the first character
             rule_order_number = rule[0]
             rule = rule[1:]
-            # remove the left arrow
-            rule = rule.split(u'←')[-1]
-            rule = rule.split(u'→')[0]
+            # remove the arrows by uncommenting the next two lines
+            #rule = rule.split('←')[-1]
+            #rule = rule.split('→')[0]
             cleaned_rules_list.append((rule_order_number, rule))
             # remove the right arrow
         return cleaned_rules_list
