@@ -127,6 +127,18 @@ module.exports = app => {
 
     app.on('issues.opened', async context => {
         console.log("hi");
+
+        
+
+        const install_id = context.payload.installation.id;
+        console.log(context.github.apps.createInstallationToken({installation_id: install_id}));
+
+        // console.log(context.payload.installation.id);
+
+        // console.log(context.github.authenticate({ type: 'app', token: 'superspecialsecret' }));
+        // console.log(context.github.apps.listInstallations());
+        // console.log(octokit.apps.getAuthenticated());
+
         console.log(home_dir);
         const issueComment = context.issue({ body: 'Thanks for opening this issue!' });
         return context.github.issues.createComment(issueComment);
