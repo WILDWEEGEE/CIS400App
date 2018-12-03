@@ -1,3 +1,6 @@
+// TODO: ERROR HANDLING
+// TODO: test on forks
+
 const shell = require('shelljs');
 const jsonwebtoken = require('jsonwebtoken');
 const home_dir = shell.pwd().stdout;
@@ -16,16 +19,42 @@ fs.readFile('../../PrivateKeys/petablox.2018-12-01.private-key.pem', 'utf8', fun
  */
 module.exports = app => {
 
-    function runScanBuild(home_dir, directory, clone_url, branch) {
-        shell.cd(home_dir);
+    // TODO: might need to change expiration time or authenticate multiple times
+    async function authenticateApp(context) {
+        const now = Math.floor(Date.now() / 1000);
+        const payload = {
+            iat: now,
+            exp: now + 60,
+            iss: appId
+        };
+        const bearer = jsonwebtoken.sign(payload, privateKey, {algorithm: 'RS256'});
+        console.log(bearer);
+
+        context.github.authenticate({ type: 'app', token: bearer });
+
+        const install_id = context.payload.installation.id;
+        console.log(install_id);
+
+        const {data: {token}} = await context.github.apps.createInstallationToken({installation_id: install_id});
+
+        context.github.authenticate({ type: 'token', token });
+
+        console.log(token);
+
+        return token;
+    }
+
+    function runScanBuild(homeDir, directory, branch, installToken, repoFullName) {
+        shell.cd(homeDir);
         shell.mkdir(directory);
         shell.cd(directory);
-        if (shell.exec(`git clone -b ${branch} ${clone_url}`).code) {
+        if (shell.exec(`git clone -b ${branch} https://x-access-token:${installToken}@github.com/${repoFullName}.git`).code) {
             let errorMsg = `Error: Git clone for ${directory} directory failed!`;
             console.log(errorMsg);
             return errorMsg;
         } else {
             // TODO: search for Makefile in root directory
+            // TODO: I don't think this function needs to return anything (maybe an rc?)
             shell.cd('*');
             let comment = `${directory} directory BUG REPORT:\n`;
             const scanBuildCmd = shell.exec('scan-build -o ../analysis make', {silent:true});
@@ -101,6 +130,8 @@ module.exports = app => {
     }
 
     app.on(['pull_request.opened','pull_request.reopened'], async context => {
+        const installToken = await authenticateApp(context);
+
         const from_dir = 'from';
         const target_dir = 'target';
         const diff_dir = 'diff';
@@ -108,13 +139,15 @@ module.exports = app => {
 
         const branch_from = context.payload.pull_request.head.ref;
         const branch_target = context.payload.pull_request.base.ref;
-        const branch_from_clone_url = context.payload.pull_request.head.repo.clone_url;
-        const branch_target_clone_url = context.payload.pull_request.base.repo.clone_url;
+        // const branch_from_clone_url = context.payload.pull_request.head.repo.clone_url;
+        // const branch_target_clone_url = context.payload.pull_request.base.repo.clone_url;
+        const fromFullName = context.payload.pull_request.head.repo.full_name;
+        const targetFullName = context.payload.pull_request.base.repo.full_name;
 
         console.log('starting from');
-        const from_output = runScanBuild(home_dir, from_dir, branch_from_clone_url, branch_from);
+        const from_output = runScanBuild(home_dir, from_dir, branch_from, installToken, fromFullName);
         console.log('starting target');
-        const target_output = runScanBuild(home_dir, target_dir, branch_target_clone_url, branch_target);
+        const target_output = runScanBuild(home_dir, target_dir, branch_target, installToken, targetFullName);
         console.log('running parser');
         runParser(home_dir, parser, from_dir, target_dir, diff_dir);
         console.log('creating comments');
@@ -135,67 +168,32 @@ module.exports = app => {
     });
 
     app.on('issues.opened', async context => {
-        console.log("hi");
+        // const now = Math.floor(Date.now() / 1000);
+        // const payload = {
+        //     iat: now,
+        //     exp: now + 60,
+        //     iss: appId
+        // };
+        // const bearer = jsonwebtoken.sign(payload, privateKey, {algorithm: 'RS256'});
+        // console.log(bearer);
 
-        const now = Math.floor(Date.now() / 1000);
-        const payload = {
-            iat: now,
-            exp: now + 60,
-            iss: appId
-        };
-        const bearer = jsonwebtoken.sign(payload, privateKey, {algorithm: 'RS256'});
-        console.log(bearer);
-
-        context.github.authenticate({ type: 'app', token: bearer });
-
-        const install_id = context.payload.installation.id;
-        const {data: {token}} = await context.github.apps.createInstallationToken({installation_id: install_id});
-
-        context.github.authenticate({ type: 'token', token });
-
-        console.log(token);
-
-        const fullName = context.payload.repository.full_name;
-        shell.exec(`git clone https://x-access-token:${token}@github.com/${fullName}.git`);
-
-        // const rubyCmd = shell.exec('ruby ruby/generate_jwt.rb', {silent:true});
-        // if (rubyCmd.code) {
-        //     error = 'Error: Could not generate JWT!';
-        //     console.log(error);
-        // } else {
-        //     const jwt = rubyCmd.stdout;
-        //     console.log(jwt);
-        // }
+        // context.github.authenticate({ type: 'app', token: bearer });
 
         // const install_id = context.payload.installation.id;
-        // console.log(context.github.apps.createInstallationToken({installation_id: install_id}));
+        // console.log(install_id);
 
-        // console.log(context.payload.installation.id);
+        // const {data: {token}} = await context.github.apps.createInstallationToken({installation_id: install_id});
 
-        // console.log(context.github.authenticate({ type: 'app', token: 'superspecialsecret' }));
-        // console.log(context.github.apps.listInstallations());
-        // console.log(octokit.apps.getAuthenticated());
+        // context.github.authenticate({ type: 'token', token });
 
-        // console.log(home_dir);
-        // const issueComment = context.issue({ body: 'Thanks for opening this issue!' });
-        // return context.github.issues.createComment(issueComment);
+        // console.log(token);
+
+        // const fullName = context.payload.repository.full_name;
+        // shell.exec(`git clone https://x-access-token:${token}@github.com/${fullName}.git`);
+
+        await authenticateApp(context);
+
+        const issueComment = context.issue({ body: 'Thanks for opening this issue!' });
+        return context.github.issues.createComment(issueComment);
     });
-
-    // app.on('pull_request.opened', async context => {
-    //   app.log('pull request opened');
-    //   app.log(context);
-    //   console.log(context.payload);
-    //   const branch_from = context.payload.pull_request.head.ref;
-    //   const branch_target = context.payload.pull_request.base.ref;
-    //   const branch_from_clone_url = context.payload.pull_request.head.repo.clone_url;
-    //   const branch_target_clone_url = context.payload.pull_request.base.repo.clone_url;
-    //   const pullRequestComment = context.issue({ body: 'Thanks for opening this pull request!' });
-    //   return context.github.issues.createComment(pullRequestComment);
-    // });
-
-    // For more information on building apps:
-    // https://probot.github.io/docs/
-
-    // To get your app running against GitHub, see:
-    // https://probot.github.io/docs/development/
 }
