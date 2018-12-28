@@ -1,4 +1,4 @@
-// TODO: ERROR HANDLING
+// TODO: more robust error handling
 // TODO: test on forks
 
 const shell = require('shelljs');
@@ -44,6 +44,7 @@ module.exports = app => {
         return token;
     }
 
+    // Clone the repo of the associated branch and run scan-build analysis (produces html/plist output)
     function runScanBuild(homeDir, directory, branch, installToken, repoFullName) {
         shell.cd(homeDir);
         shell.mkdir(directory);
@@ -53,7 +54,7 @@ module.exports = app => {
             console.log(errorMsg);
             return errorMsg;
         } else {
-            // TODO: search for Makefile in root directory
+            // TODO: add more robust build command
             // TODO: I don't think this function needs to return anything (maybe an rc?)
             shell.cd('*');
             let comment = `${directory} directory BUG REPORT:\n`;
@@ -72,6 +73,7 @@ module.exports = app => {
         }
     }
 
+    // Keeping this in case we ever want to use clang-check in the future
     function runClangCheck(directory, clone_url, branch) {
         shell.mkdir(directory);
         shell.cd(directory);
@@ -94,6 +96,7 @@ module.exports = app => {
         return comment;
     }
 
+    // Run parser to diff the html reports
     function runParser(home_dir, parser, from_dir, target_dir, diff_dir) {
         shell.cd(home_dir);
         const from_analysis = `${from_dir}/analysis/*`;
@@ -105,6 +108,7 @@ module.exports = app => {
         }
     }
 
+    // Create GitHub comments from the html reports that remain after running the parser
     function createComments(context, home_dir, diff_dir) {
         shell.cd(home_dir);
         let comments = []
@@ -122,6 +126,7 @@ module.exports = app => {
         return comments;
     }
 
+    // Remove temporary directories
     function cleanup(home_dir, from_dir, target_dir, diff_dir) {
         shell.cd(home_dir);
         shell.rm('-rf', from_dir);
@@ -129,7 +134,9 @@ module.exports = app => {
         shell.rm('-rf', diff_dir);
     }
 
+    // Run this code when a pull request is opened or reopened
     app.on(['pull_request.opened','pull_request.reopened'], async context => {
+        // Get the installation token
         const installToken = await authenticateApp(context);
 
         const from_dir = 'from';
@@ -137,62 +144,27 @@ module.exports = app => {
         const diff_dir = 'diff';
         const parser = 'parser/ScanBuildDifferencer.py';
 
+        // Get branch names
         const branch_from = context.payload.pull_request.head.ref;
         const branch_target = context.payload.pull_request.base.ref;
-        // const branch_from_clone_url = context.payload.pull_request.head.repo.clone_url;
-        // const branch_target_clone_url = context.payload.pull_request.base.repo.clone_url;
         const fromFullName = context.payload.pull_request.head.repo.full_name;
         const targetFullName = context.payload.pull_request.base.repo.full_name;
 
-        console.log('starting from');
+        // Clone the associated repos, run the analyses, and post the results on GitHub
         const from_output = runScanBuild(home_dir, from_dir, branch_from, installToken, fromFullName);
-        console.log('starting target');
         const target_output = runScanBuild(home_dir, target_dir, branch_target, installToken, targetFullName);
-        console.log('running parser');
         runParser(home_dir, parser, from_dir, target_dir, diff_dir);
-        console.log('creating comments');
         const comments = createComments(context, home_dir, diff_dir);
         comments.forEach(function (comment) {
             context.github.issues.createComment(comment);
         });
-        console.log('starting cleanup');
-        cleanup(home_dir, from_dir, target_dir, diff_dir);
 
-        // TODO
-        // const prepared_from_comment = context.issue({ body: from_output });
-        // const prepared_target_comment = context.issue({ body: target_output });
-        // const prepared_from_comment = context.issue({ body: runClangCheck('from', branch_from_clone_url, branch_from) });
-        // const prepared_target_comment = context.issue({ body: runClangCheck('target', branch_target_clone_url, branch_target) });
-        // await context.github.issues.createComment(prepared_from_comment);
-        // return context.github.issues.createComment(prepared_target_comment);
+        cleanup(home_dir, from_dir, target_dir, diff_dir);
     });
 
+    // Use this if we want to test new features on issues
     app.on('issues.opened', async context => {
-        // const now = Math.floor(Date.now() / 1000);
-        // const payload = {
-        //     iat: now,
-        //     exp: now + 60,
-        //     iss: appId
-        // };
-        // const bearer = jsonwebtoken.sign(payload, privateKey, {algorithm: 'RS256'});
-        // console.log(bearer);
-
-        // context.github.authenticate({ type: 'app', token: bearer });
-
-        // const install_id = context.payload.installation.id;
-        // console.log(install_id);
-
-        // const {data: {token}} = await context.github.apps.createInstallationToken({installation_id: install_id});
-
-        // context.github.authenticate({ type: 'token', token });
-
-        // console.log(token);
-
-        // const fullName = context.payload.repository.full_name;
-        // shell.exec(`git clone https://x-access-token:${token}@github.com/${fullName}.git`);
-
         await authenticateApp(context);
-
         const issueComment = context.issue({ body: 'Thanks for opening this issue!' });
         return context.github.issues.createComment(issueComment);
     });
